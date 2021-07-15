@@ -87,12 +87,12 @@ compfields = net.gatherComponentFieldUnion(components)
 partfields = net.gatherLibPartFieldUnion()
 
 # remove Reference, Value, Datasheet, and Footprint, they will come from 'columns' below
-# partfields -= set( ['Reference', 'Value', 'Datasheet', 'Footprint'] )
+partfields -= set( ['Reference', 'Value', 'Datasheet', 'Footprint'] )
 
 columnset = compfields | partfields     # union
 
 # prepend an initial 'hard coded' list and put the enchillada into list 'columns'
-columns = ['Designator', 'Comment', 'LibPart', 'Footprint', 'Datasheet'] + sorted(list(columnset))
+columns = ['Item', 'Qty', 'Reference(s)', 'Value', 'LibPart', 'Footprint', 'Datasheet'] + sorted(list(columnset))
 
 # Create a new csv writer object to use as the output formatter
 out = csv.writer( f, lineterminator='\n', delimiter=',', quotechar='\"', quoting=csv.QUOTE_ALL )
@@ -104,15 +104,34 @@ def writerow( acsvwriter, columns ):
         utf8row.append( fromNetlistText( str(col) ) )
     acsvwriter.writerow( utf8row )
 
+# Output a set of rows as a header providing general information
+writerow( out, ['Source:', net.getSource()] )
+writerow( out, ['Date:', net.getDate()] )
+writerow( out, ['Tool:', net.getTool()] )
+writerow( out, ['Generator:', sys.argv[0]] )
+writerow( out, ['Component Count:', len(components)] )
+writerow( out, [] )
+writerow( out, ['Individual Components:'] )
+writerow( out, [] )                        # blank line
+writerow( out, columns )
+
 # Output all the interesting components individually first:
 row = []
 for c in components:
     del row[:]
+    row.append('')                                      # item is blank in individual table
+    row.append('')                                      # Qty is always 1, why print it
     row.append( c.getRef() )                            # Reference
     row.append( c.getValue() )                          # Value
+    row.append( c.getLibName() + ":" + c.getPartName() ) # LibPart
+    #row.append( c.getDescription() )
     row.append( c.getFootprint() )
     row.append( c.getDatasheet() )
-    row.append( c.getField( 'LCSC Part' ) )
+
+    # from column 7 upwards, use the fieldnames to grab the data
+    for field in columns[7:]:
+        row.append( c.getField( field ) );
+
     writerow( out, row )
 
 
